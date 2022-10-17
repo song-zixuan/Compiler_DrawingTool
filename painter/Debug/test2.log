@@ -1,0 +1,7 @@
+﻿  Assembling painter.asm...
+painter.asm(194): warning A6004: procedure argument or local not referenced : hPrevInst
+painter.asm(194): warning A6004: procedure argument or local not referenced : CmdLine
+painter.asm(194): warning A6004: procedure argument or local not referenced : CmdShow
+painter.asm(210): warning A6004: procedure argument or local not referenced : lParam
+painter.asm(357): warning A6004: procedure argument or local not referenced : hdc
+  test2.vcxproj -> D:\newdesk\painter\Debug\test2.exe

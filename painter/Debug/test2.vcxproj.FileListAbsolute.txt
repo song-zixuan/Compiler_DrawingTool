@@ -1,0 +1,6 @@
+D:\newdesk\VSprojects\test2\Debug\test2.exe
+D:\newdesk\VSprojects\test2-helloworld\Debug\test2.exe
+D:\newdesk\test2-helloworld\Debug\test2.exe
+D:\newdesk\123\Debug\test2.exe
+D:\newdesk\123 - 副本\Debug\test2.exe
+D:\newdesk\painter\Debug\test2.exe
