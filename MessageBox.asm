@@ -28,6 +28,7 @@ CustomColor dd 16 DUP(0)
 
 PenStyle DWORD PS_SOLID ;PS_SOLID == 0
 EraserRadius DWORD 10
+PainterRadius DWORD 1
 
 IDM_OPEN dw 1012
 IDM_SAVE dw 1013
@@ -39,7 +40,10 @@ IDM_DRAWSIZE dw 1016
 IDM_ERASESIZE dw 1017
 
 IDD_DIALOG1 dw 101
-IDC_EDIT1  dw 1001
+IDD_DIALOG2 dw 103
+
+IDC_EDIT1  dw 1001 ;erazersize
+IDC_EDIT2  dw 1002 ;paintersize
 IDI_ICON1  dw  102
 IDI_ICON2  dw  104
 
@@ -224,6 +228,43 @@ setEraserSize PROC, hWnd:HWND
 	invoke DialogBoxParam, hInstance, IDD_DIALOG1 ,hWnd, OFFSET setEraserSizeDialog, 0
 	ret
 setEraserSize ENDP
+
+
+
+
+
+setPainterRadius PROC hWnd:HWND,wParam:WPARAM,lParam:LPARAM
+    mov ebx,wParam
+    and ebx,0ffffh
+    .IF ebx == IDOK
+        invoke GetDlgItemInt,hWnd,IDC_EDIT2, NULL, 0
+		.IF eax >= 1 && eax <= 10
+			mov PainterRadius, eax
+		.ENDIF
+        invoke EndDialog,hWnd,wParam
+    .ELSEIF ebx == IDCANCEL
+        invoke EndDialog,hWnd,wParam
+        mov eax,TRUE
+    .ENDIF
+    ret
+setPainterRadius ENDP
+
+setPainterSizeDialog PROC hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
+    mov ebx,uMsg
+    .IF ebx == WM_COMMAND
+        invoke setPainterRadius,hWnd,wParam,lParam
+    .ELSE 
+        invoke DefWindowProc,hWnd,uMsg,wParam,lParam 
+        ret 
+    .ENDIF 
+    xor eax,eax 
+    ret
+setPainterSizeDialog endp
+
+setPainterSize PROC hWnd:HWND
+	invoke DialogBoxParam, hInstance, IDD_DIALOG2 ,hWnd, OFFSET setPainterSizeDialog, 0
+setPainterSize ENDP
+
 
 IChooseColor PROC hWnd:HWND
 	local cc:CHOOSECOLOR
