@@ -263,6 +263,7 @@ setPainterSizeDialog endp
 
 setPainterSize PROC hWnd:HWND
 	invoke DialogBoxParam, hInstance, IDD_DIALOG2 ,hWnd, OFFSET setPainterSizeDialog, 0
+	ret
 setPainterSize ENDP
 
 
@@ -295,7 +296,7 @@ Paintevent PROC USES ecx,
 	local hPen: HPEN
 	;extern CurrentMode:DWORD ;供不同绘图模式使用，备用
 	push ecx
-	INVOKE CreatePen, PS_SOLID, 1, CurrentColor
+	INVOKE CreatePen, PS_SOLID, PainterRadius, CurrentColor
 	mov hPen, eax
 	INVOKE SelectObject, ps.hdc, hPen
 
@@ -323,7 +324,7 @@ WndProc PROC USES ebx ecx edx,
 		.ELSEIF bx == IDM_ERASE ; 擦除模式
 			mov mode,1
 		.ELSEIF bx == IDM_DRAWSIZE ; 自定义画笔大小
-
+			INVOKE setPainterSize, hWnd
 		.ELSEIF bx == IDM_ERASESIZE; 自定义橡皮大小
 			INVOKE setEraserSize, hWnd
         .ELSEIF bx == IDM_OPEN ; 打开bmp文件
