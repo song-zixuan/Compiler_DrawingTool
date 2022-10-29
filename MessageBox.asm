@@ -87,7 +87,7 @@ mode db 0
 workRegion RECT <0, 0, 800, 600>
 
 ;Color
-CurrentColor dd 0ffh
+CurrentColor dd 000h
 CustomColor dd 16 DUP(0)
 .code
 
@@ -174,7 +174,23 @@ IChooseColor PROC hWnd:HWND
 	ret
 IChooseColor ENDP
 
+Paintevent PROC USES ecx,
+	hWnd:HWND,wParam:WPARAM,lParam:LPARAM,ps:PAINTSTRUCT
+	local hPen: HPEN
+	;extern CurrentMode:DWORD ;供不同绘图模式使用，备用
+	push ecx
+	INVOKE CreatePen, PS_SOLID, 1, CurrentColor
+	mov hPen, eax
+	INVOKE SelectObject, ps.hdc, hPen
 
+	INVOKE MoveToEx, ps.hdc, beginX, beginY, NULL
+	INVOKE LineTo, ps.hdc, endX, endY
+	;INVOKE MoveToEx, ps.hdc, 0, 0, NULL; to be decided
+
+	INVOKE DeleteObject, hPen
+	pop ecx
+	ret
+Paintevent ENDP
 
 
 
@@ -260,7 +276,7 @@ WndProc PROC USES ebx ecx edx,
 		.ELSEIF bx == IDM_ERASESIZE; 自定义橡皮大小
 			;mov mode, 1
 		.ELSEIF bx == IDM_COLOR;
-			INVOKE IChooseColor, hWnd; 更改颜色
+			INVOKE IChooseColor, hWnd; 弹出更改颜色对话框
 
 		.ENDIF
 	.ELSEIF uMsg == WM_MOUSEMOVE
@@ -311,11 +327,12 @@ WndProc PROC USES ebx ecx edx,
 	.ELSEIF uMsg == WM_PAINT
 		INVOKE BeginPaint, hWnd, ADDR ps ;LOCAL ps: PAINTSTRUCT
 		.IF mode == 0 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
 			; ebx = pen
-			;INVOKE CreatePen, PS_SOLID, 1, 0
+			;INVOKE CreatePen, PS_SOLID, 1, 056h
 			;mov ebx, eax
-			INVOKE MoveToEx, ps.hdc, beginX, beginY, NULL
-			INVOKE LineTo, ps.hdc, endX, endY
+			;INVOKE MoveToEx, ps.hdc, beginX, beginY, NULL
+			;INVOKE LineTo, ps.hdc, endX, endY
 			;INVOKE DeleteObject, ebx
 		.ENDIF
 		.IF mode == 1 ; erasing mode
@@ -344,5 +361,7 @@ WndProc PROC USES ebx ecx edx,
 	xor eax, eax
 	ret
 WndProc ENDP
+
+
 
 end start
