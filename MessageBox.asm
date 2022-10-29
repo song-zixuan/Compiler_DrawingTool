@@ -35,6 +35,8 @@ IDM_ERASESIZE dw 502
 
 IDB_ONE   dw 3301
 
+IDM_COLOR dw 601
+
 ; 菜单字符串
 fileMenuStr db "文件", 0
 loadMenuStr db "打开", 0
@@ -47,6 +49,9 @@ eraseMenuStr db "擦除", 0
 fileMenuStr2 db "自定义", 0
 drawSizeStr db "画笔大小", 0
 eraseSizeStr db "橡皮大小", 0
+
+fileMenuStr3 db "颜色", 0
+colorStr db "选择颜色", 0
 
 
 ; 按钮字符串
@@ -81,6 +86,9 @@ mode db 0
 ; 工作区域
 workRegion RECT <0, 0, 800, 600>
 
+;Color
+CurrentColor dd 0ffh
+CustomColor dd 16 DUP(0)
 .code
 
 start:
@@ -96,6 +104,7 @@ createMenu PROC
 	LOCAL popFile: HMENU
 	LOCAL popFile1: HMENU
 	LOCAL popFile2: HMENU
+	LOCAL popFile3: HMENU
 
 	INVOKE CreateMenu ; initially empty,can be filled with menu items by using the InsertMenuItem, AppendMenu, and InsertMenu functions.
 	.IF eax == 0
@@ -111,6 +120,9 @@ createMenu PROC
 
 	INVOKE CreatePopupMenu;顶部栏目第二个（"自定义"）
 	mov popFile2, eax
+
+	INVOKE CreatePopupMenu;顶部栏目第三个（“颜色”）
+	mov popFile3, eax
 
 
 	
@@ -129,9 +141,42 @@ createMenu PROC
 	INVOKE AppendMenu, popFile2, MF_STRING, IDM_DRAWSIZE, ADDR drawSizeStr ; 在绘图的菜单底下加“画图”
 	INVOKE AppendMenu, popFile2, MF_STRING, IDM_ERASESIZE, ADDR eraseSizeStr ; 在绘图的菜单底下加“擦除”
 
+	INVOKE AppendMenu, hMenu, MF_POPUP, popFile3, ADDR fileMenuStr3 ; 把颜色俩字放进对应位置
+	
+	INVOKE AppendMenu, popFile3, MF_STRING, IDM_COLOR, ADDR colorStr ;在颜色菜单底下加“选择颜色”
+
+
 	ret
 
 createMenu ENDP
+
+IChooseColor PROC hWnd:HWND
+	local cc:CHOOSECOLOR
+	push eax
+	push ecx
+	invoke RtlZeroMemory, addr cc, sizeof cc
+	mov	cc.lStructSize,sizeof cc
+	push hWnd
+	pop cc.hwndOwner
+	push hInstance
+	pop cc.hInstance
+	mov cc.rgbResult,0
+	push offset CustomColor
+	pop cc.lpCustColors
+	mov	cc.Flags, CC_RGBINIT or CC_FULLOPEN
+	invoke	ChooseColor,addr cc
+	.if	eax
+	push cc.rgbResult
+	pop	CurrentColor
+	.endif
+	pop ecx
+	pop eax
+	ret
+IChooseColor ENDP
+
+
+
+
 
 WinMain PROC,
 	hInst: HINSTANCE, hPrevInst: HINSTANCE, CmdLine: LPSTR, CmdShow: DWORD
@@ -214,6 +259,8 @@ WndProc PROC USES ebx ecx edx,
 			;mov mode, 0
 		.ELSEIF bx == IDM_ERASESIZE; 自定义橡皮大小
 			;mov mode, 1
+		.ELSEIF bx == IDM_COLOR;
+			INVOKE IChooseColor, hWnd; 更改颜色
 
 		.ENDIF
 	.ELSEIF uMsg == WM_MOUSEMOVE
