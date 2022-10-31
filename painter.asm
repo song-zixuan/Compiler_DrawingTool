@@ -6,16 +6,22 @@ option casemap:none
 
 WinMain proto :dword, :dword, :dword, :dword
 
-INCLUDE windows.inc
-INCLUDE user32.inc
-INCLUDE kernel32.inc
-INCLUDE gdi32.inc
-INCLUDE comdlg32.inc
+include windows.inc 
+include user32.inc 
+include kernel32.inc 
+include gdi32.inc
+include msvcrt.inc
+include comdlg32.inc
+include comctl32.inc
+include msvcrt.inc
 
-INCLUDELIB user32.lib
-INCLUDELIB kernel32.lib
-INCLUDELIB gdi32.lib
-INCLUDELIB comdlg32.lib
+includelib user32.lib 
+includelib kernel32.lib 
+includelib gdi32.lib
+includelib msvcrt.lib
+includelib comdlg32.lib
+includelib comctl32.lib
+includelib msvcrt.lib
 
 
 
@@ -25,6 +31,10 @@ PenWidth DWORD 1
 ;Color
 CurrentColor dd 000h
 CustomColor dd 16 DUP(0)
+testString byte "helloworld"
+
+LogicFont				LOGFONT <> 
+CurrentFont				HFONT	0
 
 PenStyle DWORD PS_SOLID ;PS_SOLID == 0
 EraserRadius DWORD 10
@@ -39,41 +49,51 @@ IDM_ERASE dw 1015
 IDM_DRAWSIZE dw 1016
 IDM_ERASESIZE dw 1017
 
-IDD_DIALOG1 dw 101
-IDD_DIALOG2 dw 103
+IDM_INPUTTEXT dw 1018
+IDM_CHOOSEFONT dw 1019
 
-IDC_EDIT1  dw 1001 ;erazersize
-IDC_EDIT2  dw 1002 ;paintersize
+IDD_DIALOG1 dw 101
+IDD_DIALOG2 dw 105
+IDD_DIALOG3 dw 103
+IDC_CURSOR1 dw 107
+IDC_CURSOR2 dw 108
+IDC_EDIT1  dw 1001
+IDC_EDIT3  dw 1002
+IDC_EDIT2  dw 1003
 IDI_ICON1  dw  102
 IDI_ICON2  dw  104
 
 IDM_COLOR dw 601
 
-fileMenuStr db "ÎÄ¼ş", 0
-loadMenuStr db "´ò¿ª", 0
-saveMenuStr db "±£´æ", 0
+fileMenuStr db "æ–‡ä»¶", 0
+loadMenuStr db "æ‰“å¼€", 0
+saveMenuStr db "ä¿å­˜", 0
 
-fileMenuStr1 db "»æÍ¼", 0
-drawMenuStr db "»­Í¼", 0
-eraseMenuStr db "²Á³ı", 0
+fileMenuStr1 db "ç»˜å›¾", 0
+drawMenuStr db "ç”»å›¾", 0
+eraseMenuStr db "æ“¦é™¤", 0
 
-fileMenuStr2 db "´óĞ¡", 0
-drawSizeStr db "»­±Ê´óĞ¡", 0
-eraseSizeStr db "ÏğÆ¤´óĞ¡", 0
+fileMenuStr2 db "å¤§å°", 0
+drawSizeStr db "ç”»ç¬”å¤§å°", 0
+eraseSizeStr db "æ©¡çš®å¤§å°", 0
 
-fileMenuStr3 db "ÑÕÉ«", 0
-colorStr db "Ñ¡ÔñÑÕÉ«", 0
+fileMenuStr3 db "é¢œè‰²", 0
+colorStr db "é€‰æ‹©é¢œè‰²", 0
 
-; ÀàÃûÒÔ¼°³ÌĞòÃû
+fileMenuStr4 db "æ–‡å­—", 0
+textStr db "è¾“å…¥æ–‡å­—", 0
+fontStr db "é€‰æ‹©å­—ä½“", 0
+
+; ç±»åä»¥åŠç¨‹åºå
 className db "DrawingWinClass", 0
-appName db "»­Í¼°å", 0
+appName db "ç”»å›¾æ¿", 0
 
 ;handle
 hInstance HINSTANCE ?
 hMenu HMENU ?
 commandLine LPSTR ?
 
-; Êó±êĞÅÏ¢Ïà¹Ø
+; é¼ æ ‡ä¿¡æ¯ç›¸å…³
 beginX dd 0
 beginY dd 0
 endX dd 0
@@ -84,17 +104,20 @@ curY dd 0
 
 drawingFlag db 0
 erasingFlag db 0
-; »­Í¼/²Á³ıÄ£Ê½
+textflag db 0
+; ç”»å›¾/æ“¦é™¤æ¨¡å¼
 mode db 0
 
 workRegion RECT <0, 0, 800, 600>
 
-; ³¤¿í
+ShowString BYTE 100 dup(?)
+
+; é•¿å®½
 bmpLength dw 541
 bmpWidth dw 784
 
-;ÎÄ¼şÏà¹Ø
-bmpFile OPENFILENAME <>  ;bmpÎÄ¼ş
+;æ–‡ä»¶ç›¸å…³
+bmpFile OPENFILENAME <>  ;bmpæ–‡ä»¶
 fileOpenExtension byte "BMP(*.bmp)", 0, "*.bmp", 0, 0
 fileSaveExtension byte "BMP(*.bmp)", 0, 0
 fileName byte "bmp", 0
@@ -112,7 +135,7 @@ start:
 	INVOKE WinMain, hInstance, NULL, commandLine, SW_SHOWDEFAULT
 	INVOKE ExitProcess, eax
 
-; ´´½¨²Ëµ¥
+; åˆ›å»ºèœå•
 createMenu PROC
 	LOCAL topMenu1: HMENU
 	LOCAL topMenu2: HMENU
@@ -126,38 +149,38 @@ createMenu PROC
 	mov hMenu, eax
 
 	INVOKE CreatePopupMenu      ; Creates a drop-down menu, submenu, or shortcut menu
-	mov topMenu1, eax           ; ¶¥²¿À¸Ä¿µÚÒ»¸ö£¨¡°ÎÄ¼ş¡±£©
+	mov topMenu1, eax           ; é¡¶éƒ¨æ ç›®ç¬¬ä¸€ä¸ªï¼ˆâ€œæ–‡ä»¶â€ï¼‰
 
-	INVOKE CreatePopupMenu      ;¶¥²¿À¸Ä¿µÚ¶ş¸ö£¨"»æÍ¼"£©
+	INVOKE CreatePopupMenu      ;é¡¶éƒ¨æ ç›®ç¬¬äºŒä¸ªï¼ˆ"ç»˜å›¾"ï¼‰
 	mov topMenu2, eax
 
-	INVOKE CreatePopupMenu      ;¶¥²¿À¸Ä¿µÚ¶ş¸ö£¨"´óĞ¡"£©
+	INVOKE CreatePopupMenu      ;é¡¶éƒ¨æ ç›®ç¬¬äºŒä¸ªï¼ˆ"å¤§å°"ï¼‰
 	mov topMenu3, eax
 
-	INVOKE CreatePopupMenu       ;¶¥²¿À¸Ä¿µÚÈı¸ö£¨¡°ÑÕÉ«¡±£©
+	INVOKE CreatePopupMenu       ;é¡¶éƒ¨æ ç›®ç¬¬ä¸‰ä¸ªï¼ˆâ€œé¢œè‰²â€ï¼‰
 	mov topMenu4, eax
 
 
 
 	
-	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu1, ADDR fileMenuStr ;°ÑÎÄ¼şÁ©×Ö·Å½ø¶ÔÓ¦Î»ÖÃ
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu1, ADDR fileMenuStr ;æŠŠæ–‡ä»¶ä¿©å­—æ”¾è¿›å¯¹åº”ä½ç½®
 
-	INVOKE AppendMenu, topMenu1, MF_STRING, IDM_OPEN, ADDR loadMenuStr ;ÔÚÎÄ¼şµÄ²Ëµ¥µ×ÏÂ¼Ó¡°´ò¿ª¡±
-	INVOKE AppendMenu, topMenu1, MF_STRING, IDM_SAVE, ADDR saveMenuStr ;ÔÚÎÄ¼şµÄ²Ëµ¥µ×ÏÂ¼Ó¡°±£´æ¡±
+	INVOKE AppendMenu, topMenu1, MF_STRING, IDM_OPEN, ADDR loadMenuStr ;åœ¨æ–‡ä»¶çš„èœå•åº•ä¸‹åŠ â€œæ‰“å¼€â€
+	INVOKE AppendMenu, topMenu1, MF_STRING, IDM_SAVE, ADDR saveMenuStr ;åœ¨æ–‡ä»¶çš„èœå•åº•ä¸‹åŠ â€œä¿å­˜â€
 
-	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu2, ADDR fileMenuStr1 ;°Ñ»æÍ¼Á©×Ö·Å½ø¶ÔÓ¦Î»ÖÃ
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu2, ADDR fileMenuStr1 ;æŠŠç»˜å›¾ä¿©å­—æ”¾è¿›å¯¹åº”ä½ç½®
 	
-	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_DRAW, ADDR drawMenuStr ; ÔÚ»æÍ¼µÄ²Ëµ¥µ×ÏÂ¼Ó¡°»­Í¼¡±
-	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_ERASE, ADDR eraseMenuStr ; ÔÚ»æÍ¼µÄ²Ëµ¥µ×ÏÂ¼Ó¡°²Á³ı¡±
+	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_DRAW, ADDR drawMenuStr ; åœ¨ç»˜å›¾çš„èœå•åº•ä¸‹åŠ â€œç”»å›¾â€
+	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_ERASE, ADDR eraseMenuStr ; åœ¨ç»˜å›¾çš„èœå•åº•ä¸‹åŠ â€œæ“¦é™¤â€
 
-	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu3, ADDR fileMenuStr2 ;°Ñ´óĞ¡Á©×Ö·Å½ø¶ÔÓ¦Î»ÖÃ
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu3, ADDR fileMenuStr2 ;æŠŠå¤§å°ä¿©å­—æ”¾è¿›å¯¹åº”ä½ç½®
 
-	INVOKE AppendMenu, topMenu3, MF_STRING, IDM_DRAWSIZE, ADDR drawSizeStr ; ÔÚ´óĞ¡µÄ²Ëµ¥µ×ÏÂ¼Ó¡°»­±Ê´óĞ¡¡±
-	INVOKE AppendMenu, topMenu3, MF_STRING, IDM_ERASESIZE, ADDR eraseSizeStr ; ÔÚ´óĞ¡µÄ²Ëµ¥µ×ÏÂ¼Ó¡°ÏğÆ¤´óĞ¡¡±
+	INVOKE AppendMenu, topMenu3, MF_STRING, IDM_DRAWSIZE, ADDR drawSizeStr ; åœ¨å¤§å°çš„èœå•åº•ä¸‹åŠ â€œç”»ç¬”å¤§å°â€
+	INVOKE AppendMenu, topMenu3, MF_STRING, IDM_ERASESIZE, ADDR eraseSizeStr ; åœ¨å¤§å°çš„èœå•åº•ä¸‹åŠ â€œæ©¡çš®å¤§å°â€
 
-	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu4, ADDR fileMenuStr3 ; °ÑÑÕÉ«Á©×Ö·Å½ø¶ÔÓ¦Î»ÖÃ
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu4, ADDR fileMenuStr3 ; æŠŠé¢œè‰²ä¿©å­—æ”¾è¿›å¯¹åº”ä½ç½®
 	
-	INVOKE AppendMenu, topMenu4, MF_STRING, IDM_COLOR, ADDR colorStr ;ÔÚÑÕÉ«²Ëµ¥µ×ÏÂ¼Ó¡°Ñ¡ÔñÑÕÉ«¡±
+	INVOKE AppendMenu, topMenu4, MF_STRING, IDM_COLOR, ADDR colorStr ;åœ¨é¢œè‰²èœå•åº•ä¸‹åŠ â€œé€‰æ‹©é¢œè‰²â€
 
 	ret
 createMenu ENDP
@@ -171,34 +194,34 @@ WinMain PROC,
 	INVOKE createMenu
 
 
-	;×¢²á´°¿ÚµÄ²ÎÊı
-	mov wc.cbSize, SIZEOF WNDCLASSEX ; ½á¹¹Ìå´óĞ¡
+	;æ³¨å†Œçª—å£çš„å‚æ•°
+	mov wc.cbSize, SIZEOF WNDCLASSEX ; ç»“æ„ä½“å¤§å°
 	mov wc.style, CS_HREDRAW or CS_VREDRAW 
-							; CS_HREDRAW£ºÒ»µ©ÒÆ¶¯»ò³ß´çµ÷ÕûÊ¹¿Í»§ÇøµÄ¿í¶È·¢Éú±ä»¯£¬¾ÍÖØĞÂ»æÖÆ´°¿Ú;
-							; CS_VREDRAW£ºÒ»µ©ÒÆ¶¯»ò³ß´çµ÷ÕûÊ¹¿Í»§ÇøµÄ¸ß¶È·¢Éú±ä»¯£¬¾ÍÖØĞÂ»æÖÆ´°¿Ú¡£ ÕâÀïÈ¡Á½Õß¼æ²¢
-	mov wc.lpfnWndProc, OFFSET WndProc ; ´°¿Ú´¦Àíº¯ÊıµÄÖ¸Õë
-	mov wc.cbClsExtra, NULL; Îª´°¿ÚÀàµÄ¶îÍâĞÅÏ¢×ö¼ÇÂ¼£¬³õÊ¼»¯Îª0¡£
-	mov wc.cbWndExtra, NULL; ¼ÇÂ¼´°¿ÚÊµÀıµÄ¶îÍâĞÅÏ¢£¬ÏµÍ³³õÊ¼Îª0
+							; CS_HREDRAWï¼šä¸€æ—¦ç§»åŠ¨æˆ–å°ºå¯¸è°ƒæ•´ä½¿å®¢æˆ·åŒºçš„å®½åº¦å‘ç”Ÿå˜åŒ–ï¼Œå°±é‡æ–°ç»˜åˆ¶çª—å£;
+							; CS_VREDRAWï¼šä¸€æ—¦ç§»åŠ¨æˆ–å°ºå¯¸è°ƒæ•´ä½¿å®¢æˆ·åŒºçš„é«˜åº¦å‘ç”Ÿå˜åŒ–ï¼Œå°±é‡æ–°ç»˜åˆ¶çª—å£ã€‚ è¿™é‡Œå–ä¸¤è€…å…¼å¹¶
+	mov wc.lpfnWndProc, OFFSET WndProc ; çª—å£å¤„ç†å‡½æ•°çš„æŒ‡é’ˆ
+	mov wc.cbClsExtra, NULL; ä¸ºçª—å£ç±»çš„é¢å¤–ä¿¡æ¯åšè®°å½•ï¼Œåˆå§‹åŒ–ä¸º0ã€‚
+	mov wc.cbWndExtra, NULL; è®°å½•çª—å£å®ä¾‹çš„é¢å¤–ä¿¡æ¯ï¼Œç³»ç»Ÿåˆå§‹ä¸º0
 	push hInst
-	pop wc.hInstance;±¾Ä£¿éµÄÊµÀı¾ä±ú
-	mov wc.hbrBackground, COLOR_WINDOW+1;´°¿ÚÀàµÄ±³¾°Ë¢£¬Îª±³¾°Ë¢¾ä±ú
-	mov wc.lpszMenuName, NULL;Ö¸Ïò²Ëµ¥µÄÖ¸Õë
-	mov wc.lpszClassName, OFFSET className;Ö¸ÏòÀàÃû³ÆµÄÖ¸Õë
-	;INVOKE LoadIcon, NULL, IDI_APPLICATION;´ÓÓëÓ¦ÓÃ³ÌĞòÊµÀı¹ØÁªµÄ¿ÉÖ´ĞĞÎÄ¼ş (.exe) ¼ÓÔØÖ¸¶¨µÄÍ¼±ê×ÊÔ´¡£
+	pop wc.hInstance;æœ¬æ¨¡å—çš„å®ä¾‹å¥æŸ„
+	mov wc.hbrBackground, COLOR_WINDOW+1;çª—å£ç±»çš„èƒŒæ™¯åˆ·ï¼Œä¸ºèƒŒæ™¯åˆ·å¥æŸ„
+	mov wc.lpszMenuName, NULL;æŒ‡å‘èœå•çš„æŒ‡é’ˆ
+	mov wc.lpszClassName, OFFSET className;æŒ‡å‘ç±»åç§°çš„æŒ‡é’ˆ
+	;INVOKE LoadIcon, NULL, IDI_APPLICATION;ä»ä¸åº”ç”¨ç¨‹åºå®ä¾‹å…³è”çš„å¯æ‰§è¡Œæ–‡ä»¶ (.exe) åŠ è½½æŒ‡å®šçš„å›¾æ ‡èµ„æºã€‚
 	INVOKE LoadIcon, NULL, IDI_ICON2
-	mov wc.hIcon, eax;´°¿ÚÀàµÄÍ¼±ê£¬ÎªÍ¼±ê×ÊÔ´¾ä±ú
-	mov wc.hIconSm, eax;Ğ¡Í¼±êµÄ¾ä±ú£¬ÔÚÈÎÎñÀ¸ÏÔÊ¾µÄÍ¼±ê
-	INVOKE LoadCursor, NULL, IDC_ARROW;´ÓÓëÓ¦ÓÃ³ÌĞòÊµÀı¹ØÁªµÄ¿ÉÖ´ĞĞ (.EXE) ÎÄ¼şÖĞ¼ÓÔØÖ¸¶¨µÄÓÎ±ê×ÊÔ´¡£
-	mov wc.hCursor, eax;ÀàÓÎ±êµÄ¾ä±ú
+	mov wc.hIcon, eax;çª—å£ç±»çš„å›¾æ ‡ï¼Œä¸ºå›¾æ ‡èµ„æºå¥æŸ„
+	mov wc.hIconSm, eax;å°å›¾æ ‡çš„å¥æŸ„ï¼Œåœ¨ä»»åŠ¡æ æ˜¾ç¤ºçš„å›¾æ ‡
+	INVOKE LoadCursor, NULL, IDC_ARROW;ä»ä¸åº”ç”¨ç¨‹åºå®ä¾‹å…³è”çš„å¯æ‰§è¡Œ (.EXE) æ–‡ä»¶ä¸­åŠ è½½æŒ‡å®šçš„æ¸¸æ ‡èµ„æºã€‚
+	mov wc.hCursor, eax;ç±»æ¸¸æ ‡çš„å¥æŸ„
 
-	INVOKE RegisterClassEx, ADDR wc        ;ÓÃwc×¢²á´°¿ÚÀà(ÓÉÓÚÉÏÃæµÄ²ÎÊıÒÑ¾­×¢²áÍê³ÉÁË)
+	INVOKE RegisterClassEx, ADDR wc        ;ç”¨wcæ³¨å†Œçª—å£ç±»(ç”±äºä¸Šé¢çš„å‚æ•°å·²ç»æ³¨å†Œå®Œæˆäº†)
 	INVOKE CreateWindowEx, NULL, ADDR className, ADDR appName, \
 		WS_OVERLAPPEDWINDOW AND (NOT WS_SIZEBOX) AND (NOT WS_MAXIMIZEBOX) AND (NOT WS_MINIMIZEBOX), CW_USEDEFAULT, \
 		CW_USEDEFAULT, 800, 600, NULL, hMenu, \
 		hInst, NULL ;
 	mov hwnd, eax
-	INVOKE ShowWindow, hwnd, SW_SHOWNORMAL;´´½¨´°¿Ú£¨Ò²¾ÍÊÇ°Ñ»­Í¼µÄ´°¿Úµ¯³öÀ´£©
-	INVOKE UpdateWindow, hwnd;¸üĞÂÖ¸¶¨´°¿ÚµÄ¿Í»§Çø
+	INVOKE ShowWindow, hwnd, SW_SHOWNORMAL;åˆ›å»ºçª—å£ï¼ˆä¹Ÿå°±æ˜¯æŠŠç”»å›¾çš„çª—å£å¼¹å‡ºæ¥ï¼‰
+	INVOKE UpdateWindow, hwnd;æ›´æ–°æŒ‡å®šçª—å£çš„å®¢æˆ·åŒº
 	.WHILE TRUE
 		INVOKE GetMessage, ADDR msg, NULL, 0, 0
 		.BREAK .IF (!eax)
@@ -307,7 +330,7 @@ IChooseColor ENDP
 Paintevent PROC USES ecx,
 	hWnd:HWND,wParam:WPARAM,lParam:LPARAM,ps:PAINTSTRUCT
 	local hPen: HPEN
-	;extern CurrentMode:DWORD ;¹©²»Í¬»æÍ¼Ä£Ê½Ê¹ÓÃ£¬±¸ÓÃ
+	;extern CurrentMode:DWORD ;ä¾›ä¸åŒç»˜å›¾æ¨¡å¼ä½¿ç”¨ï¼Œå¤‡ç”¨
 	push ecx
 	INVOKE CreatePen, PS_SOLID, PainterRadius, CurrentColor
 	mov hPen, eax
@@ -321,6 +344,44 @@ Paintevent PROC USES ecx,
 	pop ecx
 	ret
 Paintevent ENDP
+
+setEraserCursor PROC USES eax ebx,
+	hWnd:HWND,wParam:WPARAM,lParam:LPARAM
+	push eax
+	push ebx
+	mov eax,lParam
+    and eax,0ffffh
+    .IF eax!=HTCLIENT
+        ret
+    .ENDIF
+
+    movzx eax,mode
+    movzx ebx,IDC_CURSOR1
+    invoke LoadCursor,hInstance,ebx
+    invoke SetCursor,eax
+	pop ebx
+	pop eax
+    ret
+setEraserCursor ENDP
+
+setPencilCursor PROC USES eax ebx,
+	hWnd:HWND,wParam:WPARAM,lParam:LPARAM
+	push eax
+	push ebx
+	mov eax,lParam
+    and eax,0ffffh
+    .IF eax!=HTCLIENT
+        ret
+    .ENDIF
+
+    movzx eax,mode
+    movzx ebx,IDC_CURSOR2
+    invoke LoadCursor,hInstance,ebx
+    invoke SetCursor,eax
+	pop ebx
+	pop eax
+    ret
+setPencilCursor ENDP
 
 WndProc PROC USES ebx ecx edx,
 	hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
@@ -339,20 +400,20 @@ WndProc PROC USES ebx ecx edx,
 	LOCAL ps: PAINTSTRUCT
 
 
-	.IF uMsg == WM_DESTROY ;ÍË³ö³ÌĞò
+	.IF uMsg == WM_DESTROY ;é€€å‡ºç¨‹åº
 		INVOKE PostQuitMessage, NULL
-	.ELSEIF uMsg == WM_COMMAND	; ÏìÓ¦ÊÂ¼ş
+	.ELSEIF uMsg == WM_COMMAND	; å“åº”äº‹ä»¶
 		mov ebx, wParam
-		.IF bx == IDM_DRAW  ; »­Í¼Ä£Ê½
+		.IF bx == IDM_DRAW  ; ç”»å›¾æ¨¡å¼
 			mov mode,0
-		.ELSEIF bx == IDM_ERASE ; ²Á³ıÄ£Ê½
+		.ELSEIF bx == IDM_ERASE ; æ“¦é™¤æ¨¡å¼
 			mov mode,1
-		.ELSEIF bx == IDM_DRAWSIZE ; ×Ô¶¨Òå»­±Ê´óĞ¡
+		.ELSEIF bx == IDM_DRAWSIZE ; è‡ªå®šä¹‰ç”»ç¬”å¤§å°
 			INVOKE setPainterSize, hWnd
-		.ELSEIF bx == IDM_ERASESIZE; ×Ô¶¨ÒåÏğÆ¤´óĞ¡
+		.ELSEIF bx == IDM_ERASESIZE; è‡ªå®šä¹‰æ©¡çš®å¤§å°
 			INVOKE setEraserSize, hWnd
-        .ELSEIF bx == IDM_OPEN     ;´ò¿ªÎÄ¼ş
-			push edx               ;ÅäÖÃbmpÎÄ¼şĞÅÏ¢ºÍ¸ñÊ½
+        .ELSEIF bx == IDM_OPEN     ;æ‰“å¼€æ–‡ä»¶
+			push edx               ;é…ç½®bmpæ–‡ä»¶ä¿¡æ¯å’Œæ ¼å¼
 			mov bmpFile.hwndOwner, NULL
 			mov bmpFile.nFilterIndex, 1
 			mov bmpFile.lpstrFileTitle, NULL
@@ -378,8 +439,7 @@ WndProc PROC USES ebx ecx edx,
 			invoke BitBlt, hdc, 0, 0,  bmpWidth, bmpLength, hdcMem, 0, 0, SRCCOPY
 			invoke DeleteObject, hbm
 			invoke DeleteDC, hdcMem
-
-		.ELSEIF bx == IDM_SAVE        ;±£´æÎÄ¼ş
+		.ELSEIF bx == IDM_SAVE        ;ä¿å­˜æ–‡ä»¶
 			push edx
 			mov edx, sizeof bmpFile
 			mov bmpFile.lStructSize, edx 
@@ -393,7 +453,7 @@ WndProc PROC USES ebx ecx edx,
 			pop edx
 		
 			INVOKE GetSaveFileName, ADDR bmpFile
-			INVOKE GetDC, hWnd ;»ñÈ¡µ±Ç°´°¿Ú¾ä±ú
+			INVOKE GetDC, hWnd ;è·å–å½“å‰çª—å£å¥æŸ„
 			
 			mov hdc, eax
 			INVOKE CreateCompatibleBitmap, hdc, bmpWidth, bmpLength
@@ -403,7 +463,7 @@ WndProc PROC USES ebx ecx edx,
 
 			INVOKE SelectObject, hdcMem, hbm 
 			INVOKE BitBlt, hdcMem, 0, 0, bmpWidth, bmpLength, hdc, 0, 0, SRCCOPY
-			INVOKE CreateFile,ADDR bmpFileName,GENERIC_WRITE,0,	NULL,CREATE_ALWAYS,	FILE_ATTRIBUTE_NORMAL,NULL ;´´½¨ÎÄ¼ş
+			INVOKE CreateFile,ADDR bmpFileName,GENERIC_WRITE,0,	NULL,CREATE_ALWAYS,	FILE_ATTRIBUTE_NORMAL,NULL ;åˆ›å»ºæ–‡ä»¶
 			mov fileHandle, eax
 			INVOKE GetObject, hbm, (sizeof BITMAP), ADDR bm 
 
@@ -438,7 +498,7 @@ WndProc PROC USES ebx ecx edx,
 			mov bmSize, eax
 			popad
 
-			;É«ÉîĞ¡ÓÚµÈÓÚ8Î»£¬µ÷É«°åÑÕÉ«ÊıÊÇ2µÄÉ«Éî´Î·½£¬´óÓÚ8Î»ÎŞµ÷É«°å
+			;è‰²æ·±å°äºç­‰äº8ä½ï¼Œè°ƒè‰²æ¿é¢œè‰²æ•°æ˜¯2çš„è‰²æ·±æ¬¡æ–¹ï¼Œå¤§äº8ä½æ— è°ƒè‰²æ¿
 			pushad
 			.IF bm.bmBitsPixel > 8
 				push edx
@@ -507,23 +567,23 @@ WndProc PROC USES ebx ecx edx,
 			INVOKE CloseHandle, fileHandle
 
 		.ELSEIF bx == IDM_COLOR;
-			INVOKE IChooseColor, hWnd; ¸ü¸ÄÑÕÉ«
+			INVOKE IChooseColor, hWnd; æ›´æ”¹é¢œè‰²
 		.ENDIF
 	.ELSEIF uMsg == WM_MOUSEMOVE
 		mov ebx, lParam
 		mov edx, 0
 		mov dx, bx
-		sar ebx, 16               ; edx and ebx´æ´¢µ±Ç°Êó±êxºÍyµÄÎ»ÖÃ
+		sar ebx, 16               ; edx and ebxå­˜å‚¨å½“å‰é¼ æ ‡xå’Œyçš„ä½ç½®
 
 		mov curX, edx
 		mov curY, ebx
 		.IF mode == 0    ;drawing mode
-			.IF drawingFlag == 1; Êó±ê×ó¼ü°´ÏÂ»á±ä³É1¡£Ì§Æğ»á±ä³É0
+			.IF drawingFlag == 1; é¼ æ ‡å·¦é”®æŒ‰ä¸‹ä¼šå˜æˆ1ã€‚æŠ¬èµ·ä¼šå˜æˆ0
 				.IF endX == 0
-					mov beginX, edx ;Êó±ê»¹ÔÚÔ­Ê¼Î»ÖÃ
+					mov beginX, edx ;é¼ æ ‡è¿˜åœ¨åŸå§‹ä½ç½®
 				.ELSE
 					mov eax, endX
-					mov beginX, eax ;Êó±êÒÆ¶¯µ½endÎ»ÖÃ
+					mov beginX, eax ;é¼ æ ‡ç§»åŠ¨åˆ°endä½ç½®
 				.ENDIF
 
 				.IF endY == 0
@@ -534,7 +594,7 @@ WndProc PROC USES ebx ecx edx,
 				.ENDIF
 
 				mov endX, edx
-				mov endY, ebx ;Êó±êÎ»ÖÃ¸üĞÂ
+				mov endY, ebx ;é¼ æ ‡ä½ç½®æ›´æ–°
 				INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
 			.ENDIF
 		.ENDIF
@@ -554,6 +614,13 @@ WndProc PROC USES ebx ecx edx,
 		mov beginY, 0
 		mov endX, 0
 		mov endY, 0
+	.ELSEIF uMsg == WM_SETCURSOR
+		.IF mode == 0
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
+		.IF mode == 1
+			INVOKE setEraserCursor, hWnd, wParam, lParam
+		.ENDIF
 	.ELSEIF uMsg == WM_PAINT
 		INVOKE BeginPaint, hWnd, ADDR ps ;LOCAL ps: PAINTSTRUCT
 		.IF mode == 0 ; painting mode
