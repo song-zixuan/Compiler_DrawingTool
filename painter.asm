@@ -36,7 +36,7 @@ testString byte "helloworld"
 LogicFont				LOGFONT <> 
 CurrentFont				HFONT	0
 
-PenStyle DWORD PS_SOLID ;PS_SOLID == 0
+PenStyle DWORD PS_SOLID ;PS_SOLID == 0,为默认值
 EraserRadius DWORD 10
 PainterRadius DWORD 1
 
@@ -64,6 +64,12 @@ IDI_ICON1  dw  102
 IDI_ICON2  dw  104
 
 IDM_COLOR dw 601
+IDM_STYLESOLID dw 602
+IDM_STYLEDASH dw 603
+IDM_STYLEDOT dw 604
+IDM_STYLEDASHDOT dw 605
+IDM_STYLEDASHDOTDOT dw 606
+IDM_STYLEINSIDEFRAME dw 607
 
 fileMenuStr db "文件", 0
 loadMenuStr db "打开", 0
@@ -83,6 +89,13 @@ colorStr db "选择颜色", 0
 fileMenuStr4 db "文字", 0
 textStr db "输入文字", 0
 fontStr db "选择字体", 0
+
+fileMenuStr5 db "画笔样式", 0
+SolidStr db "solid", 0
+dashStr db "dash", 0
+dotStr db "dot", 0
+dashdotStr db "dashdot", 0
+dashdotdotStr db "dashdotdot", 0
 
 ; 类名以及程序名
 className db "DrawingWinClass", 0
@@ -141,6 +154,7 @@ createMenu PROC
 	LOCAL topMenu2: HMENU
 	LOCAL topMenu3: HMENU
 	LOCAL topMenu4: HMENU
+	LOCAL topMenu5: HMENU
 
 	INVOKE CreateMenu          ; initially empty,can be filled with menu items by using the InsertMenuItem, AppendMenu, and InsertMenu functions.
 	.IF eax == 0
@@ -159,6 +173,9 @@ createMenu PROC
 
 	INVOKE CreatePopupMenu       ;顶部栏目第三个（“颜色”）
 	mov topMenu4, eax
+
+	INVOKE CreatePopupMenu       ;顶部栏目第三个（“颜色”）
+	mov topMenu5, eax
 
 
 
@@ -181,6 +198,15 @@ createMenu PROC
 	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu4, ADDR fileMenuStr3 ; 把颜色俩字放进对应位置
 	
 	INVOKE AppendMenu, topMenu4, MF_STRING, IDM_COLOR, ADDR colorStr ;在颜色菜单底下加“选择颜色”
+
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu5, ADDR fileMenuStr5
+	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLESOLID, ADDR SolidStr
+	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDASH, ADDR dashStr
+	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDOT, ADDR dotStr
+	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDASHDOT, ADDR dashdotStr
+	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDASHDOTDOT, ADDR dashdotdotStr
+
+
 
 	ret
 createMenu ENDP
@@ -332,7 +358,24 @@ Paintevent PROC USES ecx,
 	local hPen: HPEN
 	;extern CurrentMode:DWORD ;供不同绘图模式使用，备用
 	push ecx
+	.IF mode == 0
 	INVOKE CreatePen, PS_SOLID, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 2
+	INVOKE CreatePen, PS_SOLID, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 3
+	INVOKE CreatePen, PS_DASH, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 4
+	INVOKE CreatePen, PS_DOT, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 5
+	INVOKE CreatePen, PS_DASHDOT, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 6
+	INVOKE CreatePen, PS_DASHDOTDOT, PainterRadius, CurrentColor
+	.ENDIF
 	mov hPen, eax
 	INVOKE SelectObject, ps.hdc, hPen
 
@@ -398,6 +441,7 @@ WndProc PROC USES ebx ecx edx,
 	LOCAL lpbi:DWORD;
 	LOCAL numWritten:DWORD
 	LOCAL ps: PAINTSTRUCT
+	LOCAL drawmode:DWORD
 
 
 	.IF uMsg == WM_DESTROY ;退出程序
@@ -408,6 +452,19 @@ WndProc PROC USES ebx ecx edx,
 			mov mode,0
 		.ELSEIF bx == IDM_ERASE ; 擦除模式
 			mov mode,1
+		.ELSEIF bx == IDM_STYLESOLID ; 擦除模式
+
+			mov mode,2
+		.ELSEIF bx == IDM_STYLEDASH ; 擦除模式
+			mov mode,3
+		.ELSEIF bx == IDM_STYLEDOT ; 擦除模式
+			mov mode,4
+		.ELSEIF bx == IDM_STYLEDASHDOT ; 擦除模式
+			mov mode,5
+		.ELSEIF bx == IDM_STYLEDASHDOTDOT ; 擦除模式
+			mov mode,6
+		.ELSEIF bx == IDM_STYLEINSIDEFRAME ; 擦除模式
+			mov mode,7
 		.ELSEIF bx == IDM_DRAWSIZE ; 自定义画笔大小
 			INVOKE setPainterSize, hWnd
 		.ELSEIF bx == IDM_ERASESIZE; 自定义橡皮大小
@@ -570,6 +627,30 @@ WndProc PROC USES ebx ecx edx,
 			INVOKE IChooseColor, hWnd; 更改颜色
 		.ENDIF
 	.ELSEIF uMsg == WM_MOUSEMOVE
+		.IF mode == 0
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
+		.IF mode == 2
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
+		.IF mode == 3
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
+		.IF mode == 4
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
+		.IF mode == 5
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
+		.IF mode == 6
+			mov eax, 1
+			mov drawmode, eax
+		.ENDIF
 		mov ebx, lParam
 		mov edx, 0
 		mov dx, bx
@@ -577,7 +658,8 @@ WndProc PROC USES ebx ecx edx,
 
 		mov curX, edx
 		mov curY, ebx
-		.IF mode == 0    ;drawing mode
+
+		.IF drawmode == 1  ;drawing mode
 			.IF drawingFlag == 1; 鼠标左键按下会变成1。抬起会变成0
 				.IF endX == 0
 					mov beginX, edx ;鼠标还在原始位置
@@ -618,6 +700,21 @@ WndProc PROC USES ebx ecx edx,
 		.IF mode == 0
 			INVOKE setPencilCursor, hWnd, wParam, lParam
 		.ENDIF
+		.IF mode == 2
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
+		.IF mode == 3
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
+		.IF mode == 4
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
+		.IF mode == 5
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
+		.IF mode == 6
+			INVOKE setPencilCursor, hWnd, wParam, lParam
+		.ENDIF
 		.IF mode == 1
 			INVOKE setEraserCursor, hWnd, wParam, lParam
 		.ENDIF
@@ -625,8 +722,24 @@ WndProc PROC USES ebx ecx edx,
 		INVOKE BeginPaint, hWnd, ADDR ps ;LOCAL ps: PAINTSTRUCT
 		.IF mode == 0 ; painting mode
 			INVOKE Paintevent, hWnd, wParam, lParam, ps
-			;INVOKE MoveToEx, ps.hdc, beginX, beginY, NULL
-			;INVOKE LineTo, ps.hdc, endX, endY
+		.ENDIF
+		.IF mode == 2 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 3 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 4 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 5 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 6 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 7 ; painting mode
+			INVOKE Paintevent, hWnd, wParam, lParam, ps
 		.ENDIF
 		.IF mode == 1 ; erasing mode
 			.IF erasingFlag == 1
