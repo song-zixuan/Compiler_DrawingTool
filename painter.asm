@@ -57,6 +57,7 @@ IDD_DIALOG2 dw 105
 IDD_DIALOG3 dw 103
 IDC_CURSOR1 dw 107
 IDC_CURSOR2 dw 108
+IDC_CURSOR3 dw 109
 IDC_EDIT1  dw 1001
 IDC_EDIT3  dw 1002
 IDC_EDIT2  dw 1003
@@ -155,6 +156,7 @@ createMenu PROC
 	LOCAL topMenu3: HMENU
 	LOCAL topMenu4: HMENU
 	LOCAL topMenu5: HMENU
+	LOCAL topMenu6: HMENU
 
 	INVOKE CreateMenu          ; initially empty,can be filled with menu items by using the InsertMenuItem, AppendMenu, and InsertMenu functions.
 	.IF eax == 0
@@ -176,6 +178,10 @@ createMenu PROC
 
 	INVOKE CreatePopupMenu       ;顶部栏目第三个（“颜色”）
 	mov topMenu5, eax
+
+	INVOKE CreatePopupMenu       ;顶部栏目第三个（“颜色”）
+	mov topMenu6, eax
+
 
 
 
@@ -205,6 +211,10 @@ createMenu PROC
 	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDOT, ADDR dotStr
 	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDASHDOT, ADDR dashdotStr
 	INVOKE AppendMenu, topMenu5, MF_STRING, IDM_STYLEDASHDOTDOT, ADDR dashdotdotStr
+
+	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu6, ADDR fileMenuStr4 
+	INVOKE AppendMenu, topMenu6, MF_STRING, IDM_INPUTTEXT, ADDR textStr
+	INVOKE AppendMenu, topMenu6, MF_STRING, IDM_CHOOSEFONT, ADDR fontStr
 
 
 
@@ -353,10 +363,78 @@ IChooseColor PROC hWnd:HWND
 	ret
 IChooseColor ENDP
 
+IHandleTextDialog PROC hWnd:HWND,wParam:WPARAM,lParam:LPARAM
+    mov ebx,wParam
+    and ebx,0ffffh
+    .IF ebx == IDOK
+        invoke GetDlgItemText,hWnd,IDC_EDIT3,addr ShowString, 500
+        invoke EndDialog,hWnd,wParam
+    .ELSEIF ebx == IDCANCEL
+        invoke EndDialog,hWnd,wParam
+        mov eax,TRUE
+    .ENDIF
+    ret
+IHandleTextDialog ENDP
+
+ICallTextDialog PROC hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
+    mov ebx,uMsg
+    .IF ebx == WM_COMMAND
+        invoke IHandleTextDialog,hWnd,wParam,lParam
+    .ELSE 
+		;默认处理
+        invoke DefWindowProc,hWnd,uMsg,wParam,lParam 
+        ret 
+    .ENDIF 
+    xor eax,eax 
+    ret
+ICallTextDialog endp
+
+
+InputText PROC, hdc:HDC,hWnd:HWND
+	;extern hInstance:HINSTANCE
+	mov edx, curX
+	mov ecx, curY
+	push edx
+	push ecx
+	invoke DialogBoxParam, hInstance, IDD_DIALOG3 ,hWnd, OFFSET ICallTextDialog, 0
+
+	invoke crt_strlen, OFFSET ShowString
+	pop ecx
+	pop edx
+	INVOKE TextOutA, hdc, edx, ecx, ADDR ShowString, eax
+	mov ShowString, 0
+	ret
+InputText ENDP
+
+IChooseFont PROC hWnd:HWND
+    local cf:CHOOSEFONT
+    mov cf.lStructSize,sizeof cf
+    mov eax,hWnd
+    mov cf.hwndOwner,eax
+    mov cf.hDC, 0
+    push offset LogicFont
+    pop cf.lpLogFont
+    mov cf.Flags, 0
+    mov cf.rgbColors, 0
+    mov cf.lCustData, 0
+    mov cf.lpfnHook, 0
+    mov cf.lpTemplateName, 0
+    mov eax,hInstance
+    mov cf.hInstance,eax
+    mov cf.lpszStyle, 0
+    mov cf.nFontType, 0
+    mov cf.nSizeMin, 0
+    mov cf.nSizeMax, 0
+    
+    invoke ChooseFont,addr cf
+    invoke CreateFontIndirect, offset LogicFont
+    mov CurrentFont, eax
+    ret
+IChooseFont endp
+
 Paintevent PROC USES ecx,
 	hWnd:HWND,wParam:WPARAM,lParam:LPARAM,ps:PAINTSTRUCT
 	local hPen: HPEN
-	;extern CurrentMode:DWORD ;供不同绘图模式使用，备用
 	push ecx
 	.IF mode == 0
 	INVOKE CreatePen, PS_SOLID, PainterRadius, CurrentColor
@@ -375,6 +453,14 @@ Paintevent PROC USES ecx,
 	.ENDIF
 	.IF mode == 6
 	INVOKE CreatePen, PS_DASHDOTDOT, PainterRadius, CurrentColor
+	.ENDIF
+	.IF mode == 7
+
+		push ecx		
+		INVOKE SelectObject,ps.hdc, CurrentFont
+		pop ecx
+		INVOKE InputText, ps.hdc, hWnd
+		ret
 	.ENDIF
 	mov hPen, eax
 	INVOKE SelectObject, ps.hdc, hPen
@@ -426,6 +512,26 @@ setPencilCursor PROC USES eax ebx,
     ret
 setPencilCursor ENDP
 
+setTextCursor PROC USES eax ebx,
+	hWnd:HWND,wParam:WPARAM,lParam:LPARAM
+	push eax
+	push ebx
+	mov eax,lParam
+    and eax,0ffffh
+    .IF eax!=HTCLIENT
+        ret
+    .ENDIF
+
+    movzx eax,mode
+    movzx ebx,IDC_CURSOR3
+    invoke LoadCursor,hInstance,ebx
+    invoke SetCursor,eax
+	pop ebx
+	pop eax
+    ret
+setTextCursor ENDP
+
+
 WndProc PROC USES ebx ecx edx,
 	hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
 	LOCAL hdc: HDC
@@ -453,7 +559,6 @@ WndProc PROC USES ebx ecx edx,
 		.ELSEIF bx == IDM_ERASE ; 擦除模式
 			mov mode,1
 		.ELSEIF bx == IDM_STYLESOLID ; 擦除模式
-
 			mov mode,2
 		.ELSEIF bx == IDM_STYLEDASH ; 擦除模式
 			mov mode,3
@@ -463,8 +568,10 @@ WndProc PROC USES ebx ecx edx,
 			mov mode,5
 		.ELSEIF bx == IDM_STYLEDASHDOTDOT ; 擦除模式
 			mov mode,6
-		.ELSEIF bx == IDM_STYLEINSIDEFRAME ; 擦除模式
+		.ELSEIF bx == IDM_INPUTTEXT ; text模式
 			mov mode,7
+		.ELSEIF bx == IDM_CHOOSEFONT ; text模式
+			INVOKE IChooseFont, hWnd
 		.ELSEIF bx == IDM_DRAWSIZE ; 自定义画笔大小
 			INVOKE setPainterSize, hWnd
 		.ELSEIF bx == IDM_ERASESIZE; 自定义橡皮大小
@@ -687,6 +794,9 @@ WndProc PROC USES ebx ecx edx,
 		.ENDIF
 		
 	.ELSEIF uMsg == WM_LBUTTONDOWN
+		.IF mode == 7
+			INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
+		.ENDIF
 		mov drawingFlag, 1
 		mov erasingFlag, 1
 	.ELSEIF uMsg == WM_LBUTTONUP
@@ -718,6 +828,9 @@ WndProc PROC USES ebx ecx edx,
 		.IF mode == 1
 			INVOKE setEraserCursor, hWnd, wParam, lParam
 		.ENDIF
+		.IF mode == 7
+			INVOKE setTextCursor, hWnd, wParam, lParam
+		.ENDIF
 	.ELSEIF uMsg == WM_PAINT
 		INVOKE BeginPaint, hWnd, ADDR ps ;LOCAL ps: PAINTSTRUCT
 		.IF mode == 0 ; painting mode
@@ -739,6 +852,7 @@ WndProc PROC USES ebx ecx edx,
 			INVOKE Paintevent, hWnd, wParam, lParam, ps
 		.ENDIF
 		.IF mode == 7 ; painting mode
+
 			INVOKE Paintevent, hWnd, wParam, lParam, ps
 		.ENDIF
 		.IF mode == 1 ; erasing mode
