@@ -45,6 +45,7 @@ IDM_SAVE dw 1013
 
 IDM_DRAW  dw 1014
 IDM_ERASE dw 1015
+IDM_CLEAR dw 1020
 
 IDM_DRAWSIZE dw 1016
 IDM_ERASESIZE dw 1017
@@ -79,6 +80,7 @@ saveMenuStr db "保存", 0
 fileMenuStr1 db "绘图", 0
 drawMenuStr db "画图", 0
 eraseMenuStr db "擦除", 0
+clearMenuStr db "清屏", 0
 
 fileMenuStr2 db "大小", 0
 drawSizeStr db "画笔大小", 0
@@ -97,6 +99,8 @@ dashStr db "dash", 0
 dotStr db "dot", 0
 dashdotStr db "dashdot", 0
 dashdotdotStr db "dashdotdot", 0
+
+
 
 ; 类名以及程序名
 className db "DrawingWinClass", 0
@@ -135,7 +139,7 @@ bmpFile OPENFILENAME <>  ;bmp文件
 fileOpenExtension byte "BMP(*.bmp)", 0, "*.bmp", 0, 0
 fileSaveExtension byte "BMP(*.bmp)", 0, 0
 fileName byte "bmp", 0
-fileHandle dword ?
+fileHandle dword ? 
 bmpFileName db MAX_PATH DUP(?)
 bmpTitleName db MAX_PATH DUP(?)
 
@@ -195,6 +199,7 @@ createMenu PROC
 	
 	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_DRAW, ADDR drawMenuStr ; 在绘图的菜单底下加“画图”
 	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_ERASE, ADDR eraseMenuStr ; 在绘图的菜单底下加“擦除”
+	INVOKE AppendMenu, topMenu2, MF_STRING, IDM_CLEAR, ADDR clearMenuStr
 
 	INVOKE AppendMenu, hMenu, MF_POPUP, topMenu3, ADDR fileMenuStr2 ;把大小俩字放进对应位置
 
@@ -318,6 +323,7 @@ setPainterRadius PROC hWnd:HWND,wParam:WPARAM,lParam:LPARAM
         invoke EndDialog,hWnd,wParam
         mov eax,TRUE
     .ENDIF
+
     ret
 setPainterRadius ENDP
 
@@ -570,6 +576,12 @@ WndProc PROC USES ebx ecx edx,
 			mov mode,6
 		.ELSEIF bx == IDM_INPUTTEXT ; text模式
 			mov mode,7
+		.ELSEIF bx == IDM_CLEAR; clear the window
+			mov mode,8
+			INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
+			INVOKE GetStockObject, NULL_PEN
+			INVOKE SelectObject, hdc, eax; ps.hdc:handle to the display DC to be used for painting.
+			INVOKE Rectangle, hdc, 0, 0, 800, 600
 		.ELSEIF bx == IDM_CHOOSEFONT ; text模式
 			INVOKE IChooseFont, hWnd
 		.ELSEIF bx == IDM_DRAWSIZE ; 自定义画笔大小
@@ -790,9 +802,10 @@ WndProc PROC USES ebx ecx edx,
 
 		.IF mode == 1 ; Erasing mode
 			INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
-
 		.ENDIF
-		
+		.IF mode == 8 ; clear window
+			INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
+		.ENDIF
 	.ELSEIF uMsg == WM_LBUTTONDOWN
 		.IF mode == 7
 			INVOKE InvalidateRect, hWnd, ADDR workRegion, 0
@@ -852,8 +865,12 @@ WndProc PROC USES ebx ecx edx,
 			INVOKE Paintevent, hWnd, wParam, lParam, ps
 		.ENDIF
 		.IF mode == 7 ; painting mode
-
 			INVOKE Paintevent, hWnd, wParam, lParam, ps
+		.ENDIF
+		.IF mode == 8 ; clear the window
+			INVOKE GetStockObject, NULL_PEN
+			INVOKE SelectObject, ps.hdc, eax; ps.hdc:handle to the display DC to be used for painting.
+			INVOKE Rectangle, ps.hdc, 0, 0, 800, 600
 		.ENDIF
 		.IF mode == 1 ; erasing mode
 			.IF erasingFlag == 1
